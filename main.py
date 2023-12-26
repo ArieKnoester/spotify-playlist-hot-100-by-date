@@ -1,15 +1,16 @@
-# Spotify developer's dashboard (must have an account):
+# Spotify developer's dashboard (must have an account and must create an app):
 # https://developer.spotify.com/dashboard/
 # Spotipy module documentation:
 # https://spotipy.readthedocs.io/en/2.22.1/
 import requests
-import spotipy
 from bs4 import BeautifulSoup
+import spotipy
+from spotipy import SpotifyOAuth
 from dotenv import load_dotenv
 import os
-from spotipy.oauth2 import SpotifyOAuth
-import time  # debugging. Slow down the api calls to Spotify to make it easier to track in the console.
-import pprint as pp  # debugging.
+# import time  # debugging. Slow down the api calls to Spotify to make it easier to track in the console.
+# import pprint as pp  # debugging.
+
 
 load_dotenv(".env")
 BILLBOARD_HOT_100_URL = "https://www.billboard.com/charts/hot-100/"
@@ -26,6 +27,7 @@ soup = BeautifulSoup(billboard_content, "html.parser")
 song_titles = [title.get_text().strip() for title in soup.select("li h3", limit=100)]
 artists = [title.next_element.next_element.next_element.get_text().strip() for title in soup.select("li h3", limit=100)]
 spotify_search_terms = list(zip(song_titles, artists))
+# pp.pprint(spotify_search_terms)
 
 sp = spotipy.Spotify(
     auth_manager=SpotifyOAuth(
@@ -35,8 +37,8 @@ sp = spotipy.Spotify(
         scope=SPOTIFY_OAUTH_SCOPE
     )
 )
-# user_id = sp.current_user()["id"]
-# # print(user_id)
+user_id = sp.current_user()["id"]
+# print(user_id)
 
 year = user_date.split("-")[0]
 spotify_song_uris = []
@@ -59,7 +61,6 @@ for search_term in spotify_search_terms:
         spotify_song_uris.append(song_uri)
     # debugging.
     # time.sleep(1)
-
 # pp.pprint(spotify_song_uris)
 # print(len(spotify_song_uris))
 
@@ -72,3 +73,18 @@ for search_term in spotify_search_terms:
 # )
 # pp.pprint(uri)
 # print(uri["tracks"]["items"][0]["uri"])
+
+playlist_response = sp.user_playlist_create(
+    user=user_id,
+    name=f"Billboard's Hot 100 for {user_date}",
+    public=False,
+    collaborative=False
+)
+playlist_id = playlist_response["id"]
+# print(playlist_response)
+# print(playlist_id)
+
+sp.playlist_add_items(
+    playlist_id=playlist_id,
+    items=spotify_song_uris,
+)
